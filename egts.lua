@@ -5,7 +5,6 @@ local egts_proto = Proto("egts", "EGTS")
 local default_settings =
 {
     port = 20629
-
 }
 
 local header =
@@ -34,75 +33,30 @@ local header =
 -- регистрация полей протокола
 egts_proto.fields = header
 
--- задаем функию обработки, которая получает на вход данные tvbuf (объект Tvb), информацию о пакете 
--- pktinfo (объект Pinfo) и root дерево распарсенного объекта.
-function egts_proto.dissector(tvbuf, pktinfo, root)    
-    -- получаем размер буфера с пакетами.
-    local pktlen = tvbuf:len()
-    local bytes_consumed = 0
+local MIN_HEADE_LENGHT = 11
 
-    -- запускаем цикл на чтение так как dissector запускается на один tcp сегмент, 
-    -- а он может содержать несколько пакетов
-    while bytes_consumed < pktlen do
+local function get_egts_length(tvbuf, pktinfo, offset)
+    local header_len = tvbuf:range(offset + 3, 1):uint()
+    local data_len = tvbuf:range(offset + 5, 2):le_uint()
 
-        -- для одного EGTS пакета вызываем функцию парсинга
-        local result = dissectEGTS(tvbuf, pktinfo, root, bytes_consumed)
-        print("Result: " .. result)
-
-        if result > 0 then
-            -- функция парсинга отработала корректно и переход к следующему пакет
-            bytes_consumed = bytes_consumed + result
-            -- go again on another while loop
-        elseif result == 0 then
-            -- в процессе обработки произошла какая-то ошибка
-            return 0
-        else
-            -- если вернулось отрицательное число значит не хватило данных и надо перейти в следующий сегмент
-            pktinfo.desegment_offset = bytes_consumed
-            result = -result
-            pktinfo.desegment_len = result
-
-            -- говорим что сегмент обработан удачно
-            return pktlen
-        end  
-    end
-
-    --  Для TCP нужно вернуть либо кол-во обработанных байт либо пустоту
-    return bytes_consumed
+    return header_len + data_len + 2
 end
 
+local function dissect_egts_pdu(tvbuf, pktinfo, root)
+    local header_len = tvbuf:range(3, 1):uint()
+    local data_len = tvbuf:range(5, 2):le_uint()
+    local msglen = header_len + data_len + 2
 
-dissectEGTS = function (tvbuf, pktinfo, root, offset)
     pktinfo.cols.protocol:set("EGTS")
 
-    local actual_buf_len = tvbuf:len() - offset
-
-    -- если сообщение меньше обязательного заголовка нужно перейти в следующий сегмент
-    if actual_buf_len < 11 then
-        return actual_buf_len - 11
-    end
-
-    -- получаем длину пакета
-    local header_tvbr = tvbuf:range(offset + 3, 1)
-    local header_len = header_tvbr:uint()
-    local data_len_tvbr = tvbuf:range(offset + 5, 2)
-    local data_len = data_len_tvbr:le_uint()
-
-    local msglen = header_len + data_len
-
-    -- если в бурефе не все сообщение нужно перейти на следующий сегмент
-    if msglen > actual_buf_len then
-        return actual_buf_len - msglen
-    end
-
     -- Начинаем заполнения дерева в отображении
-    local tree = root:add(egts_proto, tvbuf:range(offset, msglen))
+    local tree = root:add(egts_proto, tvbuf:range(0, msglen))
 
     -- dissect the version field
-    tree:add(header.version, tvbuf:range(offset, 1):uint())
-    tree:add(header.security_key_id, tvbuf:range(offset + 1, 1):uint())
+    tree:add(header.version, tvbuf:range(0, 1):uint())
+    tree:add(header.security_key_id, tvbuf:range(1, 1):uint())
 
-    local prf_tvbr = tvbuf:range(offset + 2, 1):uint()
+    local prf_tvbr = tvbuf:range(2, 1):uint()
     tree:add(header.prefix, prf_tvbr)
     tree:add(header.route, prf_tvbr)
     tree:add(header.encryption_alg, prf_tvbr)
@@ -110,30 +64,42 @@ dissectEGTS = function (tvbuf, pktinfo, root, offset)
     tree:add(header.priority, prf_tvbr)    
 
     tree:add(header.header_length, header_len)
-    tree:add(header.header_encoding, tvbuf:range(offset + 4, 1):uint())
+    tree:add(header.header_encoding, tvbuf:range(4, 1):uint())
+
     tree:add(header.frame_data_length, data_len)
-    tree:add(header.header_encoding, tvbuf:range(offset + 7, 1):uint())
-    tree:add(header.packet_type, tvbuf:range(offset + 8, 1):uint())
-    tree:add(header.header_checksum, tvbuf:range(offset + 9, 1):uint())
+    tree:add(header.header_encoding, tvbuf:range(7, 1):uint())
+    tree:add(header.packet_type, tvbuf:range(8, 1):uint())
+    tree:add(header.header_checksum, tvbuf:range(9, 1):uint())
 
     local field_offset = 10;
     
     if bit.band(prf_tvbr, 0x20) == 1 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
         
-        tree:add(header.peer_address, tvbuf:range(offset + field_offset, 2):raw())
+        tree:add(header.peer_address, tvbuf:range(field_offset, 2):raw())
         field_offset = field_offset + 2
-        tree:add(header.recipient_address, tvbuf:range(offset + field_offset, 2):raw())
+        tree:add(header.recipient_address, tvbuf:range(field_offset, 2):raw())
         field_offset = field_offset + 2
-        tree:add(header.ttl, tvbuf:range(offset + field_offset, 1):raw())
+        tree:add(header.ttl, tvbuf:range(field_offset, 1):raw())
         field_offset = field_offset + 1
     end
 
-    tree:add(header.sfrd, tvbuf:range(offset + field_offset, data_len):raw())
-    tree:add(header.sfrcs, tvbuf:range(offset + field_offset + data_len - 1, 2):uint())
+    tree:add(header.sfrd, tvbuf:range(field_offset, data_len):raw())
+    tree:add(header.sfrcs, tvbuf:range(field_offset + data_len - 1, 2):uint())
 
     return msglen
 end
 
+-- задаем функию обработки, которая получает на вход данные tvbuf (объект Tvb), информацию о пакете 
+-- pktinfo (объект Pinfo) и root дерево распарсенного объекта.
+function egts_proto.dissector(tvbuf, pktinfo, root)
+    dissect_tcp_pdus(tvbuf, root, MIN_HEADE_LENGHT, get_egts_length, dissect_egts_pdu)
+    bytes_consumed = tvbuf:len()
+    return bytes_consumed
+
+end
+
+
 -- добавляем парсер в таблицу
 DissectorTable.get("tcp.port"):add(default_settings.port, egts_proto)
+
