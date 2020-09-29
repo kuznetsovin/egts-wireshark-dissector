@@ -7,9 +7,9 @@ local default_settings =
     port = 20629
 }
 
-local EGTS_PT_RESPONSE = "EGTS_PT_RESPONSE" 
-local EGTS_PT_APPDATA = "EGTS_PT_APPDATA" 
-local EGTS_PT_SIGNED_APPDATA = "EGTS_PT_SIGNED_APPDATA" 
+local EGTS_PT_RESPONSE = "EGTS_PT_RESPONSE"
+local EGTS_PT_APPDATA = "EGTS_PT_APPDATA"
+local EGTS_PT_SIGNED_APPDATA = "EGTS_PT_SIGNED_APPDATA"
 
 local egts_packet_type = {
     [0] = EGTS_PT_RESPONSE,
@@ -19,7 +19,7 @@ local egts_packet_type = {
 
 local header =
 {
-    
+
     version           = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
     security_key_id   = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
     prefix            = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
@@ -35,8 +35,8 @@ local header =
     peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
     recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
     ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
-    header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),    
-    sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),    
+    header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),
+    sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),
     response_packet_id = ProtoField.new("Response packetID", "egts.rpid", ftypes.UINT16, nil, base.DEC),
     processing_result  = ProtoField.new("Processing result", "egts.pr", ftypes.UINT8, nil, base.DEC),
     sfrcs             = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
@@ -77,7 +77,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     tree:add(header.route, prf_tvbr)
     tree:add(header.encryption_alg, prf_tvbr)
     tree:add(header.compression, prf_tvbr)
-    tree:add(header.priority, prf_tvbr)    
+    tree:add(header.priority, prf_tvbr)
 
     tree:add(header.header_length, header_len)
     tree:add(header.header_encoding, tvbuf:range(4, 1):uint())
@@ -90,10 +90,10 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     tree:add(header.header_checksum, tvbuf:range(9, 1):uint())
 
     local field_offset = 10;
-    
+
     if bit.band(prf_tvbr, 0x20) == 1 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
-        
+
         tree:add(header.peer_address, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
         tree:add(header.recipient_address, tvbuf:range(field_offset, 2):uint())
@@ -104,7 +104,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
 
     if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
         local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
-        local end_data_offset = field_offset + data_len  
+        local end_data_offset = field_offset + data_len
 
         subtree:add(header.response_packet_id, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
@@ -120,16 +120,15 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     end
 
     tree:add(header.sfrcs, tvbuf:range(field_offset, 2):uint())
-    
+
     return msglen
 end
 
--- задаем функию обработки, которая получает на вход данные tvbuf (объект Tvb), информацию о пакете 
+-- задаем функию обработки, которая получает на вход данные tvbuf (объект Tvb), информацию о пакете
 -- pktinfo (объект Pinfo) и root дерево распарсенного объекта.
 function egts_proto.dissector(tvbuf, pktinfo, root)
     dissect_tcp_pdus(tvbuf, root, MIN_HEADE_LENGHT, get_egts_length, dissect_egts_pdu)
-    bytes_consumed = tvbuf:len()
-    return bytes_consumed
+    return tvbuf:len()
 
 end
 
