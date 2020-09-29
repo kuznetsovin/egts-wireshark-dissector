@@ -1,5 +1,12 @@
 -- создаем описание нового протокола
-local egts_proto = Proto("egts", "Egts protocol")
+local egts_proto = Proto("egts", "EGTS")
+
+-- настройки плагина
+local default_settings =
+{
+    port = 20629
+
+}
 
 local header =
 {
@@ -16,11 +23,9 @@ local header =
     frame_data_length = ProtoField.new("Frame data length", "egts.fdl", ftypes.UINT16, nil, base.DEC),
     packet_identifier = ProtoField.new("Packet identifier", "egts.pid", ftypes.UINT16, nil, base.DEC),
     packet_type       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, nil, base.DEC),
-
     peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
     recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
     ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
-
     header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),    
     sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),    
     sfrcs             = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
@@ -131,4 +136,4 @@ dissectEGTS = function (tvbuf, pktinfo, root, offset)
 end
 
 -- добавляем парсер в таблицу
-DissectorTable.get("tcp.port"):add(20629, egts_proto)
+DissectorTable.get("tcp.port"):add(default_settings.port, egts_proto)
