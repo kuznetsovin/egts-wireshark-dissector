@@ -7,10 +7,14 @@ local default_settings =
     port = 20629
 }
 
+local EGTS_PT_RESPONSE = "EGTS_PT_RESPONSE" 
+local EGTS_PT_APPDATA = "EGTS_PT_APPDATA" 
+local EGTS_PT_SIGNED_APPDATA = "EGTS_PT_SIGNED_APPDATA" 
+
 local egts_packet_type = {
-    [0] = "EGTS_PT_RESPONSE",
-    [1] = "EGTS_PT_APPDATA",
-    [2] = "EGTS_PT_SIGNED_APPDATA",
+    [0] = EGTS_PT_RESPONSE,
+    [1] = EGTS_PT_APPDATA,
+    [2] = EGTS_PT_SIGNED_APPDATA,
 }
 
 local header =
@@ -33,6 +37,8 @@ local header =
     ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
     header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),    
     sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),    
+    response_packet_id = ProtoField.new("Response packetID", "egts.rpid", ftypes.UINT16, nil, base.DEC),
+    processing_result  = ProtoField.new("Processing result", "egts.pr", ftypes.UINT8, nil, base.DEC),
     sfrcs             = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
@@ -40,6 +46,10 @@ local header =
 egts_proto.fields = header
 
 local MIN_HEADE_LENGHT = 11
+
+local function get_packet_type(type_id)
+    return egts_packet_type[type_id]
+end
 
 local function get_egts_length(tvbuf, pktinfo, offset)
     local header_len = tvbuf:range(offset + 3, 1):uint()
@@ -74,7 +84,9 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
 
     tree:add(header.frame_data_length, data_len)
     tree:add(header.header_encoding, tvbuf:range(7, 1):uint())
-    tree:add(header.packet_type, tvbuf:range(8, 1):uint())
+
+    local packet_type_id = tvbuf:range(8, 1):uint()
+    tree:add(header.packet_type, packet_type_id)
     tree:add(header.header_checksum, tvbuf:range(9, 1):uint())
 
     local field_offset = 10;
@@ -82,17 +94,33 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     if bit.band(prf_tvbr, 0x20) == 1 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
         
-        tree:add(header.peer_address, tvbuf:range(field_offset, 2):raw())
+        tree:add(header.peer_address, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
-        tree:add(header.recipient_address, tvbuf:range(field_offset, 2):raw())
+        tree:add(header.recipient_address, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
-        tree:add(header.ttl, tvbuf:range(field_offset, 1):raw())
+        tree:add(header.ttl, tvbuf:range(field_offset, 1):uint())
         field_offset = field_offset + 1
     end
 
-    tree:add(header.sfrd, tvbuf:range(field_offset, data_len):raw())
-    tree:add(header.sfrcs, tvbuf:range(field_offset + data_len - 1, 2):uint())
+    if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
+        local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
+        local end_data_offset = field_offset + data_len  
 
+        subtree:add(header.response_packet_id, tvbuf:range(field_offset, 2):uint())
+        field_offset = field_offset + 2
+
+        subtree:add(header.processing_result, tvbuf:range(field_offset, 1):uint())
+        field_offset = field_offset + 1
+
+
+        subtree:add(header.sfrd, tvbuf:range(field_offset, data_len - 3):raw())
+    else
+        tree:add(header.sfrd, tvbuf:range(field_offset, data_len):raw())
+        field_offset = field_offset + data_len - 1
+    end
+
+    tree:add(header.sfrcs, tvbuf:range(field_offset, 2):uint())
+    
     return msglen
 end
 
@@ -104,7 +132,6 @@ function egts_proto.dissector(tvbuf, pktinfo, root)
     return bytes_consumed
 
 end
-
 
 -- добавляем парсер в таблицу
 DissectorTable.get("tcp.port"):add(default_settings.port, egts_proto)
