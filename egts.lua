@@ -128,7 +128,8 @@ end
 -- pktinfo (объект Pinfo) и root дерево распарсенного объекта.
 function egts_proto.dissector(tvbuf, pktinfo, root)
     dissect_tcp_pdus(tvbuf, root, MIN_HEADE_LENGHT, get_egts_length, dissect_egts_pdu)
-    return tvbuf:len()
+    local bytes_consumed = tvbuf:len()
+    return bytes_consumed
 
 end
 
