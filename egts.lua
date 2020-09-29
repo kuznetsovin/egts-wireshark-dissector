@@ -7,6 +7,12 @@ local default_settings =
     port = 20629
 }
 
+local egts_packet_type = {
+    [0] = "EGTS_PT_RESPONSE",
+    [1] = "EGTS_PT_APPDATA",
+    [2] = "EGTS_PT_SIGNED_APPDATA",
+}
+
 local header =
 {
     
@@ -21,7 +27,7 @@ local header =
     header_encoding   = ProtoField.new("Header encoding", "egts.he", ftypes.UINT8, nil, base.DEC),
     frame_data_length = ProtoField.new("Frame data length", "egts.fdl", ftypes.UINT16, nil, base.DEC),
     packet_identifier = ProtoField.new("Packet identifier", "egts.pid", ftypes.UINT16, nil, base.DEC),
-    packet_type       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, nil, base.DEC),
+    packet_type       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, egts_packet_type, base.DEC),
     peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
     recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
     ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
