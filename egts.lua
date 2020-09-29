@@ -68,7 +68,6 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     -- Начинаем заполнения дерева в отображении
     local tree = root:add(egts_proto, tvbuf:range(0, msglen))
 
-    -- dissect the version field
     tree:add(header.version, tvbuf:range(0, 1):uint())
     tree:add(header.security_key_id, tvbuf:range(1, 1):uint())
 
@@ -104,7 +103,6 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
 
     if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
         local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
-        local end_data_offset = field_offset + data_len
 
         subtree:add(header.response_packet_id, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
