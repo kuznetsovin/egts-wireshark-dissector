@@ -6,22 +6,21 @@ local header =
     
     version           = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
     security_key_id   = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
-    -- байт бьется на биты
-    prf               = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.HEX),
-    -- prefix            = ProtoField.uint8("egts.prf", "Prefix", base.DEC),
-    -- route             = ProtoField.uint8("egts.rte", "Route", base.DEC),
-    -- encryption_alg    = ProtoField.uint8("egts.ena", "Encryption alg", base.DEC),
-    -- compression       = ProtoField.uint8("egts.cmp", "Compression", base.DEC),
-    -- priority          = ProtoField.uint8("egts.pr", "Priority", base.DEC),
-
+    prefix            = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
+    route             = ProtoField.new("Route", "egts.rte", ftypes.UINT8, nil, base.DEC, 0x20),
+    encryption_alg    = ProtoField.new("Encryption alg", "egts.ena", ftypes.UINT8, nil, base.DEC, 0x18),
+    compression       = ProtoField.new("Compression", "egts.cmp", ftypes.UINT8, nil, base.DEC, 0x4),
+    priority          = ProtoField.new("Priority", "egts.pr", ftypes.UINT8, nil, base.DEC, 0x3),
     header_length     = ProtoField.new("Header length", "egts.hl", ftypes.UINT8, nil, base.DEC),
     header_encoding   = ProtoField.new("Header encoding", "egts.he", ftypes.UINT8, nil, base.DEC),
     frame_data_length = ProtoField.new("Frame data length", "egts.fdl", ftypes.UINT16, nil, base.DEC),
     packet_identifier = ProtoField.new("Packet identifier", "egts.pid", ftypes.UINT16, nil, base.DEC),
     packet_type       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, nil, base.DEC),
-    -- peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
-    -- recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
-    -- ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
+
+    peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
+    recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
+    ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
+
     header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),    
     sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),    
     sfrcs             = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
@@ -99,7 +98,11 @@ dissectEGTS = function (tvbuf, pktinfo, root, offset)
     tree:add(header.security_key_id, tvbuf:range(offset + 1, 1):uint())
 
     local prf_tvbr = tvbuf:range(offset + 2, 1):uint()
-    tree:add(header.prf, prf_tvbr)
+    tree:add(header.prefix, prf_tvbr)
+    tree:add(header.route, prf_tvbr)
+    tree:add(header.encryption_alg, prf_tvbr)
+    tree:add(header.compression, prf_tvbr)
+    tree:add(header.priority, prf_tvbr)    
 
     tree:add(header.header_length, header_len)
     tree:add(header.header_encoding, tvbuf:range(offset + 4, 1):uint())
@@ -107,8 +110,22 @@ dissectEGTS = function (tvbuf, pktinfo, root, offset)
     tree:add(header.header_encoding, tvbuf:range(offset + 7, 1):uint())
     tree:add(header.packet_type, tvbuf:range(offset + 8, 1):uint())
     tree:add(header.header_checksum, tvbuf:range(offset + 9, 1):uint())
-    tree:add(header.sfrd, tvbuf:range(offset + 10, data_len):raw())
-    tree:add(header.sfrcs, tvbuf:range(offset + 10 + data_len - 1, 2):uint())
+
+    local field_offset = 10;
+    
+    if bit.band(prf_tvbr, 0x20) == 1 then
+        -- если RTE флаг присутствует, то заполняем не обязательные поля
+        
+        tree:add(header.peer_address, tvbuf:range(offset + field_offset, 2):raw())
+        field_offset = field_offset + 2
+        tree:add(header.recipient_address, tvbuf:range(offset + field_offset, 2):raw())
+        field_offset = field_offset + 2
+        tree:add(header.ttl, tvbuf:range(offset + field_offset, 1):raw())
+        field_offset = field_offset + 1
+    end
+
+    tree:add(header.sfrd, tvbuf:range(offset + field_offset, data_len):raw())
+    tree:add(header.sfrcs, tvbuf:range(offset + field_offset + data_len - 1, 2):uint())
 
     return msglen
 end
