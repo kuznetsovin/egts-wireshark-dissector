@@ -54,6 +54,9 @@ local header =
     sst      = ProtoField.new("Source service type", "egts.sst", ftypes.UINT8, nil, base.DEC),
     rst      = ProtoField.new("Recipient service type", "egts.rst", ftypes.UINT8, nil, base.DEC),
     rd       = ProtoField.new("Record data", "egts.rd", ftypes.BYTES),
+    srt      = ProtoField.new("Subrecord type", "egts.srt", ftypes.UINT8, nil, base.DEC),
+    srl      = ProtoField.new("Subrecord length", "egts.srl", ftypes.UINT16, nil, base.DEC),
+    srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.BYTES),
     sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
