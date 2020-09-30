@@ -79,49 +79,49 @@ end
 local function parse_sdr(buf, tree)
     local current_offset = 0
     local sdr_len = buf:range(current_offset, 2):le_uint()
-        local service_data_record = tree:add(egts_proto, buf, "Service Data Record")
-        current_offset = current_offset + 2
+    local service_data_record = tree:add(egts_proto, buf, "Service Data Record")
+    current_offset = current_offset + 2
 
-        service_data_record:add(header.rl, sdr_len)
-        service_data_record:add(header.rn, buf:range(current_offset, 2):le_uint())
-        current_offset = current_offset + 2
+    service_data_record:add(header.rl, sdr_len)
+    service_data_record:add(header.rn, buf:range(current_offset, 2):le_uint())
+    current_offset = current_offset + 2
 
-        local rfl = buf:range(current_offset, 1):uint()
-        service_data_record:add(header.ssod, rfl)
-        service_data_record:add(header.rsod, rfl)
-        service_data_record:add(header.grp, rfl)
-        service_data_record:add(header.rpr, rfl)
-        service_data_record:add(header.tmfe, rfl)
-        service_data_record:add(header.evfe, rfl)
-        service_data_record:add(header.obfe, rfl)
-        current_offset = current_offset + 1
-        
-        if bit.band(rfl, 0x1) ~= 0 then
-            -- если флаг OBFE установлен, то значит есть поле с id объекта и его надо заполнить
-            service_data_record:add(header.oid, buf:range(current_offset, 4):le_uint())
-            current_offset = current_offset + 4
-        end
+    local rfl = buf:range(current_offset, 1):uint()
+    service_data_record:add(header.ssod, rfl)
+    service_data_record:add(header.rsod, rfl)
+    service_data_record:add(header.grp, rfl)
+    service_data_record:add(header.rpr, rfl)
+    service_data_record:add(header.tmfe, rfl)
+    service_data_record:add(header.evfe, rfl)
+    service_data_record:add(header.obfe, rfl)
+    current_offset = current_offset + 1
 
-        if bit.band(rfl, 0x2) ~= 0 then
-            -- если флаг EVFE установлен, то значит присутствует поле с id события
-            service_data_record:add(header.evid, buf:range(current_offset, 4):le_uint())
-            current_offset = current_offset + 4
-        end
+    if bit.band(rfl, 0x1) ~= 0 then
+        -- если флаг OBFE установлен, то значит есть поле с id объекта и его надо заполнить
+        service_data_record:add(header.oid, buf:range(current_offset, 4):le_uint())
+        current_offset = current_offset + 4
+    end
 
-        if bit.band(rfl, 0x4) ~= 0 then
-            -- если флаг TMFE установлен, то есть поле со временем, которое нужно разобрать
-            service_data_record:add(header.tm, buf:range(current_offset, 4):le_uint())
-            current_offset = current_offset + 4
-        end
+    if bit.band(rfl, 0x2) ~= 0 then
+        -- если флаг EVFE установлен, то значит присутствует поле с id события
+        service_data_record:add(header.evid, buf:range(current_offset, 4):le_uint())
+        current_offset = current_offset + 4
+    end
 
-        service_data_record:add(header.sst, buf:range(current_offset, 1):uint())
-        current_offset = current_offset + 1
+    if bit.band(rfl, 0x4) ~= 0 then
+        -- если флаг TMFE установлен, то есть поле со временем, которое нужно разобрать
+        service_data_record:add(header.tm, buf:range(current_offset, 4):le_uint())
+        current_offset = current_offset + 4
+    end
 
-        service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
-        current_offset = current_offset + 1
+    service_data_record:add(header.sst, buf:range(current_offset, 1):uint())
+    current_offset = current_offset + 1
 
-        service_data_record:add(header.rd, buf:range(current_offset, sdr_len):raw())
-        current_offset = current_offset + sdr_len
+    service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
+    current_offset = current_offset + 1
+
+    service_data_record:add(header.rd, buf:range(current_offset, sdr_len):raw())
+    current_offset = current_offset + sdr_len
 
     return current_offset
 end
