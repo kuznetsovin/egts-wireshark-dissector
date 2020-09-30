@@ -83,6 +83,57 @@ end
 
 local function parse_pt_appdata (buf, tree)
     tree:add(header.sfrd, buf:raw())
+    -- local current_offset = 0
+    -- while (current_offset < buf:len()) do
+    --     local sdr_len = buf:range(current_offset, 2):le_uint()
+    --     local sdr_end_offset = current_offset + sdr_len
+    --     print(buf:range(current_offset, 2))
+    --     print(buf:len().. " " .. current_offset .. " " .. sdr_len .. " " .. sdr_end_offset .. " ")
+    --     local service_data_record = tree:add(egts_proto, buf:range(current_offset, sdr_end_offset), "Service Data Record")
+    --     current_offset = current_offset + 2
+
+    --     service_data_record:add(header.rl, sdr_len)
+    --     service_data_record:add(header.rn, buf:range(current_offset, 2):le_uint())
+    --     current_offset = current_offset + 2
+
+    --     local rfl = buf:range(current_offset, 1):uint()
+    --     service_data_record:add(header.ssod, rfl)
+    --     service_data_record:add(header.rsod, rfl)
+    --     service_data_record:add(header.grp, rfl)
+    --     service_data_record:add(header.rpr, rfl)
+    --     service_data_record:add(header.tmfe, rfl)
+    --     service_data_record:add(header.evfe, rfl)
+    --     service_data_record:add(header.obfe, rfl)
+    --     current_offset = current_offset + 1
+        
+    --     if bit.band(rfl, 0x01) == 1 then
+    --         -- если флаг OBFE установлен, то значит есть поле с id объекта и его надо заполнить
+    --         service_data_record:add(header.oid, buf:range(current_offset, 4):le_uint())
+    --         current_offset = current_offset + 4
+    --     end
+
+    --     if bit.band(rfl, 0x02) == 1 then
+    --         -- если флаг EVFE установлен, то значит присутствует поле с id события
+    --         service_data_record:add(header.evid, buf:range(current_offset, 4):le_uint())
+    --         current_offset = current_offset + 4
+    --     end
+
+    --     if bit.band(rfl, 0x04) == 1 then
+    --         -- если флаг TMFE установлен, то есть поле со временем, которое нужно разобрать
+    --         service_data_record:add(header.tm, buf:range(current_offset, 4):le_uint())
+    --         current_offset = current_offset + 4
+    --     end
+
+    --     service_data_record:add(header.sst, buf:range(current_offset, 1):uint())
+    --     current_offset = current_offset + 1
+
+    --     service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
+    --     current_offset = current_offset + 1
+
+    --     service_data_record:add(header.rd, buf:range(current_offset, sdr_end_offset):raw())
+    --     current_offset = sdr_end_offset
+    -- end
+
     return buf:len()
 end
 
@@ -115,11 +166,10 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     tree:add(header.he, tvbuf:range(4, 1):uint())
 
     tree:add(header.fdl, data_len)
-    tree:add(header.he, tvbuf:range(7, 1):uint())
+    tree:add(header.pid, tvbuf:range(7, 2):uint())
 
-    local packet_type_id = tvbuf:range(8, 1):uint()
+    local packet_type_id = tvbuf:range(9, 1):uint()
     tree:add(header.pt, packet_type_id)
-    tree:add(header.hcs, tvbuf:range(9, 1):uint())
 
     local field_offset = 10;
 
@@ -133,6 +183,8 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
         tree:add(header.ttl, tvbuf:range(field_offset, 1):uint())
         field_offset = field_offset + 1
     end
+    tree:add(header.hcs, tvbuf:range(field_offset, 1):uint())
+    field_offset = field_offset + 1
 
     local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
     if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
