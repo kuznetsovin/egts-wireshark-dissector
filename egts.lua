@@ -124,15 +124,23 @@ local function parse_sdr(buf, tree)
 end
 
 local function parse_pt_response (buf, tree)
-    tree:add(header.rpid, buf:range(0, 2):le_uint())
-    tree:add(header.pr, buf:range(2, 1):uint())
-    tree:add(header.sfrd, buf:range(3, -1):raw())
+    local current_offset = 0
+    tree:add(header.rpid, buf:range(current_offset, 2):le_uint())
+    current_offset = current_offset + 2
+
+    tree:add(header.pr, buf:range(current_offset, 1):uint())
+    current_offset = current_offset + 1
+
+    local computed_bytes = current_offset
+    while (current_offset < buf:len()) do
+        computed_bytes = parse_sdr(buf:range(current_offset), tree)
+        current_offset = current_offset + computed_bytes
+    end
 
     return buf:len()
 end
 
 local function parse_pt_appdata (buf, tree)
-    -- tree:add(header.sfrd, buf:raw())
     local current_offset = 0
     local computed_bytes = 0
     while (current_offset < buf:len()) do
