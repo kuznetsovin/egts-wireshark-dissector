@@ -20,26 +20,26 @@ local egts_packet_type = {
 local header =
 {
 
-    version           = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
-    security_key_id   = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
-    prefix            = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
-    route             = ProtoField.new("Route", "egts.rte", ftypes.UINT8, nil, base.DEC, 0x20),
-    encryption_alg    = ProtoField.new("Encryption alg", "egts.ena", ftypes.UINT8, nil, base.DEC, 0x18),
-    compression       = ProtoField.new("Compression", "egts.cmp", ftypes.UINT8, nil, base.DEC, 0x4),
-    priority          = ProtoField.new("Priority", "egts.pr", ftypes.UINT8, nil, base.DEC, 0x3),
-    header_length     = ProtoField.new("Header length", "egts.hl", ftypes.UINT8, nil, base.DEC),
-    header_encoding   = ProtoField.new("Header encoding", "egts.he", ftypes.UINT8, nil, base.DEC),
-    frame_data_length = ProtoField.new("Frame data length", "egts.fdl", ftypes.UINT16, nil, base.DEC),
-    packet_identifier = ProtoField.new("Packet identifier", "egts.pid", ftypes.UINT16, nil, base.DEC),
-    packet_type       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, egts_packet_type, base.DEC),
-    peer_address      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
-    recipient_address = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
-    ttl               = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
-    header_checksum   = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),
-    sfrd              = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),
-    response_packet_id = ProtoField.new("Response packetID", "egts.rpid", ftypes.UINT16, nil, base.DEC),
-    processing_result  = ProtoField.new("Processing result", "egts.pr", ftypes.UINT8, nil, base.DEC),
-    sfrcs             = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
+    prv            = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
+    skid    = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
+    prf             = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
+    rte              = ProtoField.new("Route", "egts.rte", ftypes.UINT8, nil, base.DEC, 0x20),
+    ena     = ProtoField.new("Encryption alg", "egts.ena", ftypes.UINT8, nil, base.DEC, 0x18),
+    cmp        = ProtoField.new("Compression", "egts.cmp", ftypes.UINT8, nil, base.DEC, 0x4),
+    priority = ProtoField.new("Priority", "egts.pr", ftypes.UINT8, nil, base.DEC, 0x3),
+    hl       = ProtoField.new("Header length", "egts.hl", ftypes.UINT8, nil, base.DEC),
+    he       = ProtoField.new("Header encoding", "egts.he", ftypes.UINT8, nil, base.DEC),
+    fdl      = ProtoField.new("Frame data length", "egts.fdl", ftypes.UINT16, nil, base.DEC),
+    pid      = ProtoField.new("Packet identifier", "egts.pid", ftypes.UINT16, nil, base.DEC),
+    pt       = ProtoField.new("Packet type", "egts.pt", ftypes.UINT8, egts_packet_type, base.DEC),
+    pra      = ProtoField.new("Peer address", "egts.pra", ftypes.UINT16, nil, base.DEC),
+    rca      = ProtoField.new("Recipient address", "egts.rca", ftypes.UINT16, nil, base.DEC),
+    ttl      = ProtoField.new("Time to live", "egts.ttl", ftypes.UINT8, nil, base.DEC),
+    hcs      = ProtoField.new("Header checksum", "egts.hcs", ftypes.UINT8, nil, base.HEX),
+    sfrd     = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),
+    rpid     = ProtoField.new("Response packetID", "egts.rpid", ftypes.UINT16, nil, base.DEC),
+    pr       = ProtoField.new("Processing result", "egts.pr", ftypes.UINT8, nil, base.DEC),
+    sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
 -- регистрация полей протокола
@@ -59,8 +59,8 @@ local function get_egts_length(tvbuf, pktinfo, offset)
 end
 
 local function parse_pt_response (buf, tree)
-    tree:add(header.response_packet_id, buf:range(0, 2):uint())
-    tree:add(header.processing_result, buf:range(2, 1):uint())
+    tree:add(header.rpid, buf:range(0, 2):uint())
+    tree:add(header.pr, buf:range(2, 1):uint())
     tree:add(header.sfrd, buf:range(3, -1):raw())
 
     return buf:len()
@@ -86,34 +86,34 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     -- Начинаем заполнения дерева в отображении
     local tree = root:add(egts_proto, tvbuf:range(0, msglen))
 
-    tree:add(header.version, tvbuf:range(0, 1):uint())
-    tree:add(header.security_key_id, tvbuf:range(1, 1):uint())
+    tree:add(header.prv, tvbuf:range(0, 1):uint())
+    tree:add(header.skid, tvbuf:range(1, 1):uint())
 
     local prf_tvbr = tvbuf:range(2, 1):uint()
-    tree:add(header.prefix, prf_tvbr)
-    tree:add(header.route, prf_tvbr)
-    tree:add(header.encryption_alg, prf_tvbr)
-    tree:add(header.compression, prf_tvbr)
+    tree:add(header.prf, prf_tvbr)
+    tree:add(header.rte, prf_tvbr)
+    tree:add(header.ena, prf_tvbr)
+    tree:add(header.cmp, prf_tvbr)
     tree:add(header.priority, prf_tvbr)
 
-    tree:add(header.header_length, header_len)
-    tree:add(header.header_encoding, tvbuf:range(4, 1):uint())
+    tree:add(header.hl, header_len)
+    tree:add(header.he, tvbuf:range(4, 1):uint())
 
-    tree:add(header.frame_data_length, data_len)
-    tree:add(header.header_encoding, tvbuf:range(7, 1):uint())
+    tree:add(header.fdl, data_len)
+    tree:add(header.he, tvbuf:range(7, 1):uint())
 
     local packet_type_id = tvbuf:range(8, 1):uint()
-    tree:add(header.packet_type, packet_type_id)
-    tree:add(header.header_checksum, tvbuf:range(9, 1):uint())
+    tree:add(header.pt, packet_type_id)
+    tree:add(header.hcs, tvbuf:range(9, 1):uint())
 
     local field_offset = 10;
 
     if bit.band(prf_tvbr, 0x20) == 1 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
 
-        tree:add(header.peer_address, tvbuf:range(field_offset, 2):uint())
+        tree:add(header.pra, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
-        tree:add(header.recipient_address, tvbuf:range(field_offset, 2):uint())
+        tree:add(header.rca, tvbuf:range(field_offset, 2):uint())
         field_offset = field_offset + 2
         tree:add(header.ttl, tvbuf:range(field_offset, 1):uint())
         field_offset = field_offset + 1
