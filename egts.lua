@@ -20,12 +20,12 @@ local egts_packet_type = {
 local header =
 {
 
-    prv            = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
-    skid    = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
-    prf             = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
-    rte              = ProtoField.new("Route", "egts.rte", ftypes.UINT8, nil, base.DEC, 0x20),
-    ena     = ProtoField.new("Encryption alg", "egts.ena", ftypes.UINT8, nil, base.DEC, 0x18),
-    cmp        = ProtoField.new("Compression", "egts.cmp", ftypes.UINT8, nil, base.DEC, 0x4),
+    prv      = ProtoField.new("ProtocolVersion", "egts.prv", ftypes.UINT8, nil, base.DEC),
+    skid     = ProtoField.new("SecurityKeyID", "egts.skid", ftypes.UINT8, nil, base.DEC),
+    prf      = ProtoField.new("Prefix", "egts.prf", ftypes.UINT8, nil, base.DEC, 0xc0),
+    rte      = ProtoField.new("Route", "egts.rte", ftypes.UINT8, nil, base.DEC, 0x20),
+    ena      = ProtoField.new("Encryption alg", "egts.ena", ftypes.UINT8, nil, base.DEC, 0x18),
+    cmp      = ProtoField.new("Compression", "egts.cmp", ftypes.UINT8, nil, base.DEC, 0x4),
     priority = ProtoField.new("Priority", "egts.pr", ftypes.UINT8, nil, base.DEC, 0x3),
     hl       = ProtoField.new("Header length", "egts.hl", ftypes.UINT8, nil, base.DEC),
     he       = ProtoField.new("Header encoding", "egts.he", ftypes.UINT8, nil, base.DEC),
@@ -39,6 +39,21 @@ local header =
     sfrd     = ProtoField.new("Services frame data", "egts.sfrd", ftypes.BYTES),
     rpid     = ProtoField.new("Response packetID", "egts.rpid", ftypes.UINT16, nil, base.DEC),
     pr       = ProtoField.new("Processing result", "egts.pr", ftypes.UINT8, nil, base.DEC),
+    rl       = ProtoField.new("Record length", "egts.rl", ftypes.UINT16, nil, base.DEC),
+    rn       = ProtoField.new("Record number", "egts.rn", ftypes.UINT16, nil, base.DEC),
+    ssod     = ProtoField.new("Source service on device", "egts.ssod", ftypes.UINT8, nil, base.DEC, 0x80),
+    rsod     = ProtoField.new("Recipient service on device", "egts.rsod", ftypes.UINT8, nil, base.DEC, 0x40),
+    grp      = ProtoField.new("Group", "egts.grp", ftypes.UINT8, nil, base.DEC, 0x20),
+    rpr      = ProtoField.new("Record processing priority", "egts.rpr", ftypes.UINT8, nil, base.DEC, 0x18),
+    tmfe     = ProtoField.new("Time field exists", "egts.tmfe", ftypes.UINT8, nil, base.DEC, 0x4),
+    evfe     = ProtoField.new("Event ID field exists", "egts.evfe", ftypes.UINT8, nil, base.DEC, 0x2),
+    obfe     = ProtoField.new("Object ID field exists", "egts.obfe", ftypes.UINT8, nil, base.DEC, 0x1),
+    oid      = ProtoField.new("Object identifier", "egts.oid", ftypes.UINT32, nil, base.DEC),
+    evid     = ProtoField.new("Event identifier", "egts.evid", ftypes.UINT32, nil, base.DEC),
+    tm       = ProtoField.new("Time", "egts.tm", ftypes.UINT32, nil, base.DEC),
+    sst      = ProtoField.new("Source service type", "egts.sst", ftypes.UINT8, nil, base.DEC),
+    rst      = ProtoField.new("Recipient service type", "egts.rst", ftypes.UINT8, nil, base.DEC),
+    rd       = ProtoField.new("Record data", "egts.rd", ftypes.BYTES),
     sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
