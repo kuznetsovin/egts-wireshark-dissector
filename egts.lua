@@ -143,7 +143,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
         parse_pt_signed_appdata(tvbuf:range(field_offset, data_len), subtree)
     end
 
-    tree:add(header.sfrcs, tvbuf:range(field_offset, 2):le_uint())
+    tree:add(header.sfrcs, tvbuf:range(field_offset + data_len, 2):le_uint())
 
     return msglen
 end
