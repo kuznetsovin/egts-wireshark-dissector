@@ -58,6 +58,14 @@ local function get_egts_length(tvbuf, pktinfo, offset)
     return header_len + data_len + 2
 end
 
+local function parse_pt_response (buf, pktinfo, tree)
+    tree:add(header.response_packet_id, buf:range(0, 2):uint())
+    tree:add(header.processing_result, buf:range(2, 1):uint())
+    tree:add(header.sfrd, buf:range(3, -1):raw())
+
+    return buf:len()
+end
+
 local function dissect_egts_pdu(tvbuf, pktinfo, root)
     local header_len = tvbuf:range(3, 1):uint()
     local data_len = tvbuf:range(5, 2):le_uint()
@@ -103,15 +111,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
 
     if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
         local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
-
-        subtree:add(header.response_packet_id, tvbuf:range(field_offset, 2):uint())
-        field_offset = field_offset + 2
-
-        subtree:add(header.processing_result, tvbuf:range(field_offset, 1):uint())
-        field_offset = field_offset + 1
-
-
-        subtree:add(header.sfrd, tvbuf:range(field_offset, data_len - 3):raw())
+        parse_pt_response(tvbuf:range(field_offset, data_len - 3), pktinfo, subtree)
     else
         tree:add(header.sfrd, tvbuf:range(field_offset, data_len):raw())
         field_offset = field_offset + data_len - 1
