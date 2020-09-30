@@ -74,7 +74,7 @@ local function get_egts_length(tvbuf, pktinfo, offset)
 end
 
 local function parse_pt_response (buf, tree)
-    tree:add(header.rpid, buf:range(0, 2):uint())
+    tree:add(header.rpid, buf:range(0, 2):le_uint())
     tree:add(header.pr, buf:range(2, 1):uint())
     tree:add(header.sfrd, buf:range(3, -1):raw())
 
@@ -126,9 +126,9 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     if bit.band(prf_tvbr, 0x20) == 1 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
 
-        tree:add(header.pra, tvbuf:range(field_offset, 2):uint())
+        tree:add(header.pra, tvbuf:range(field_offset, 2):le_uint())
         field_offset = field_offset + 2
-        tree:add(header.rca, tvbuf:range(field_offset, 2):uint())
+        tree:add(header.rca, tvbuf:range(field_offset, 2):le_uint())
         field_offset = field_offset + 2
         tree:add(header.ttl, tvbuf:range(field_offset, 1):uint())
         field_offset = field_offset + 1
@@ -143,7 +143,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
         parse_pt_signed_appdata(tvbuf:range(field_offset, data_len), subtree)
     end
 
-    tree:add(header.sfrcs, tvbuf:range(field_offset, 2):uint())
+    tree:add(header.sfrcs, tvbuf:range(field_offset, 2):le_uint())
 
     return msglen
 end
