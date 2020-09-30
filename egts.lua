@@ -67,7 +67,12 @@ local function parse_pt_response (buf, tree)
 end
 
 local function parse_pt_appdata (buf, tree)
-    tree:add(header.sfrd, buf:range(0, -1):raw())
+    tree:add(header.sfrd, buf:raw())
+    return buf:len()
+end
+
+local function parse_pt_signed_appdata (buf, tree)
+    tree:add(header.sfrd, buf:raw())
     return buf:len()
 end
 
@@ -114,12 +119,13 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
         field_offset = field_offset + 1
     end
 
+    local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
     if get_packet_type(packet_type_id) == EGTS_PT_RESPONSE then
-        local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
-        parse_pt_response(tvbuf:range(field_offset, data_len - 3), subtree)
+        parse_pt_response(tvbuf:range(field_offset, data_len), subtree)
     elseif get_packet_type(packet_type_id) == EGTS_PT_APPDATA then
-        local subtree = tree:add(egts_proto, tvbuf, "Services frame data")
-        parse_pt_appdata(tvbuf:range(field_offset, data_len - 3), subtree)
+        parse_pt_appdata(tvbuf:range(field_offset, data_len), subtree)
+    else
+        parse_pt_signed_appdata(tvbuf:range(field_offset, data_len), subtree)
     end
 
     tree:add(header.sfrcs, tvbuf:range(field_offset, 2):uint())
