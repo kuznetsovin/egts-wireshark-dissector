@@ -73,6 +73,56 @@ local function get_egts_length(tvbuf, pktinfo, offset)
     return header_len + data_len + 2
 end
 
+local function parse_sdr(buf, tree)
+    local current_offset = 0
+    local sdr_len = buf:range(current_offset, 2):le_uint()
+        local service_data_record = tree:add(egts_proto, buf, "Service Data Record")
+        current_offset = current_offset + 2
+
+        service_data_record:add(header.rl, sdr_len)
+        service_data_record:add(header.rn, buf:range(current_offset, 2):le_uint())
+        current_offset = current_offset + 2
+
+        local rfl = buf:range(current_offset, 1):uint()
+        service_data_record:add(header.ssod, rfl)
+        service_data_record:add(header.rsod, rfl)
+        service_data_record:add(header.grp, rfl)
+        service_data_record:add(header.rpr, rfl)
+        service_data_record:add(header.tmfe, rfl)
+        service_data_record:add(header.evfe, rfl)
+        service_data_record:add(header.obfe, rfl)
+        current_offset = current_offset + 1
+        
+        if bit.band(rfl, 0x1) ~= 0 then
+            -- если флаг OBFE установлен, то значит есть поле с id объекта и его надо заполнить
+            service_data_record:add(header.oid, buf:range(current_offset, 4):le_uint())
+            current_offset = current_offset + 4
+        end
+
+        if bit.band(rfl, 0x2) ~= 0 then
+            -- если флаг EVFE установлен, то значит присутствует поле с id события
+            service_data_record:add(header.evid, buf:range(current_offset, 4):le_uint())
+            current_offset = current_offset + 4
+        end
+
+        if bit.band(rfl, 0x4) ~= 0 then
+            -- если флаг TMFE установлен, то есть поле со временем, которое нужно разобрать
+            service_data_record:add(header.tm, buf:range(current_offset, 4):le_uint())
+            current_offset = current_offset + 4
+        end
+
+        service_data_record:add(header.sst, buf:range(current_offset, 1):uint())
+        current_offset = current_offset + 1
+
+        service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
+        current_offset = current_offset + 1
+
+        service_data_record:add(header.rd, buf:range(current_offset, sdr_len):raw())
+        current_offset = current_offset + sdr_len
+
+    return current_offset
+end
+
 local function parse_pt_response (buf, tree)
     tree:add(header.rpid, buf:range(0, 2):le_uint())
     tree:add(header.pr, buf:range(2, 1):uint())
@@ -82,59 +132,15 @@ local function parse_pt_response (buf, tree)
 end
 
 local function parse_pt_appdata (buf, tree)
-    tree:add(header.sfrd, buf:raw())
-    -- local current_offset = 0
-    -- while (current_offset < buf:len()) do
-    --     local sdr_len = buf:range(current_offset, 2):le_uint()
-    --     local sdr_end_offset = current_offset + sdr_len
-    --     print(buf:range(current_offset, 2))
-    --     print(buf:len().. " " .. current_offset .. " " .. sdr_len .. " " .. sdr_end_offset .. " ")
-    --     local service_data_record = tree:add(egts_proto, buf:range(current_offset, sdr_end_offset), "Service Data Record")
-    --     current_offset = current_offset + 2
+    -- tree:add(header.sfrd, buf:raw())
+    local current_offset = 0
+    local computed_bytes = 0
+    while (current_offset < buf:len()) do
+        computed_bytes = parse_sdr(buf:range(current_offset), tree)
+        current_offset = current_offset + computed_bytes
+    end
 
-    --     service_data_record:add(header.rl, sdr_len)
-    --     service_data_record:add(header.rn, buf:range(current_offset, 2):le_uint())
-    --     current_offset = current_offset + 2
-
-    --     local rfl = buf:range(current_offset, 1):uint()
-    --     service_data_record:add(header.ssod, rfl)
-    --     service_data_record:add(header.rsod, rfl)
-    --     service_data_record:add(header.grp, rfl)
-    --     service_data_record:add(header.rpr, rfl)
-    --     service_data_record:add(header.tmfe, rfl)
-    --     service_data_record:add(header.evfe, rfl)
-    --     service_data_record:add(header.obfe, rfl)
-    --     current_offset = current_offset + 1
-        
-    --     if bit.band(rfl, 0x01) == 1 then
-    --         -- если флаг OBFE установлен, то значит есть поле с id объекта и его надо заполнить
-    --         service_data_record:add(header.oid, buf:range(current_offset, 4):le_uint())
-    --         current_offset = current_offset + 4
-    --     end
-
-    --     if bit.band(rfl, 0x02) == 1 then
-    --         -- если флаг EVFE установлен, то значит присутствует поле с id события
-    --         service_data_record:add(header.evid, buf:range(current_offset, 4):le_uint())
-    --         current_offset = current_offset + 4
-    --     end
-
-    --     if bit.band(rfl, 0x04) == 1 then
-    --         -- если флаг TMFE установлен, то есть поле со временем, которое нужно разобрать
-    --         service_data_record:add(header.tm, buf:range(current_offset, 4):le_uint())
-    --         current_offset = current_offset + 4
-    --     end
-
-    --     service_data_record:add(header.sst, buf:range(current_offset, 1):uint())
-    --     current_offset = current_offset + 1
-
-    --     service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
-    --     current_offset = current_offset + 1
-
-    --     service_data_record:add(header.rd, buf:range(current_offset, sdr_end_offset):raw())
-    --     current_offset = sdr_end_offset
-    -- end
-
-    return buf:len()
+    return current_offset
 end
 
 local function parse_pt_signed_appdata (buf, tree)
@@ -173,7 +179,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
 
     local field_offset = 10;
 
-    if bit.band(prf_tvbr, 0x20) == 1 then
+    if bit.band(prf_tvbr, 0x20) ~= 0 then
         -- если RTE флаг присутствует, то заполняем не обязательные поля
 
         tree:add(header.pra, tvbuf:range(field_offset, 2):le_uint())
