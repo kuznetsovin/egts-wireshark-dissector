@@ -76,6 +76,25 @@ local function get_egts_length(tvbuf, pktinfo, offset)
     return header_len + data_len + 2
 end
 
+local function parse_subrecord(buf, tree)
+    local current_offset = 0
+    local subrecord = tree:add(egts_proto, buf, "Subrecord") 
+
+    subrecord:add(header.srt, buf:range(current_offset, 1):uint())
+    current_offset = current_offset + 1
+
+    local subrecord_data_len = buf:range(current_offset, 2):le_uint()
+    subrecord:add(header.srl, subrecord_data_len)
+    current_offset = current_offset + 2
+
+    print(current_offset .. " " .. subrecord_data_len .. " " .. buf:len())
+
+    subrecord:add(header.srd, buf:range(current_offset, subrecord_data_len):raw())
+    current_offset = current_offset + subrecord_data_len
+
+    return current_offset
+end
+
 local function parse_sdr(buf, tree)
     local current_offset = 0
     local sdr_len = buf:range(current_offset, 2):le_uint()
@@ -120,8 +139,11 @@ local function parse_sdr(buf, tree)
     service_data_record:add(header.rst, buf:range(current_offset, 1):uint())
     current_offset = current_offset + 1
 
-    service_data_record:add(header.rd, buf:range(current_offset, sdr_len):raw())
-    current_offset = current_offset + sdr_len
+    local end_data_offset = current_offset + sdr_len
+    local subrecords = service_data_record:add(egts_proto, buf, "Record data")
+    while current_offset < end_data_offset do
+        current_offset = current_offset + parse_subrecord(buf:range(current_offset), subrecords)
+    end
 
     return current_offset
 end
@@ -177,7 +199,7 @@ local function dissect_egts_pdu(tvbuf, pktinfo, root)
     tree:add(header.rte, prf_tvbr)
     tree:add(header.ena, prf_tvbr)
     tree:add(header.cmp, prf_tvbr)
-    tree:add(header.priority, prf_tvbr)
+    tree:add(header.prt, prf_tvbr)
 
     tree:add(header.hl, header_len)
     tree:add(header.he, tvbuf:range(4, 1):uint())
