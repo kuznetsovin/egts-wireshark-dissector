@@ -17,6 +17,22 @@ local egts_packet_type = {
     [2] = EGTS_PT_SIGNED_APPDATA,
 }
 
+local egts_subrecord_type = {
+    [0]  = "EGTS_SR_RECORD_RESPONSE",
+    [16] = "EGTS_SR_POS_DATA",
+    [17] = "EGTS_SR_EXT_POS_DATA",
+    [19] = "EGTS_SR_COUNTERS_DATA",
+    [20] = "EGTS_SR_STATE_DATA",
+    [22] = "EGTS_SR_LOOPIN_DATA",
+    [23] = "EGTS_SR_ABS_DIG_SENS_DATA",
+    [24] = "EGTS_SR_ABS_AN_SENS_DATA",
+    [25] = "EGTS_SR_ABS_CNTR_DATA",
+    [26] = "EGTS_SR_ABS_LOOPIN_DATA",
+    [18] = "EGTS_SR_AD_SENSORS_DATA",
+    [27] = "EGTS_SR_LIQUID_LEVEL_SENSOR",
+    [28] = "EGTS_SR_PASSENGERS_COUNTERS",
+}
+
 local header =
 {
 
@@ -88,6 +104,7 @@ local function parse_subrecord(buf, tree)
         local subrecord_data_len = buf:range(current_offset, 2):le_uint()
         subrecord:add(header.srl, subrecord_data_len)
         current_offset = current_offset + 2
+        
 
         subrecord:add(header.srd, buf:range(current_offset, subrecord_data_len):raw())
         current_offset = current_offset + subrecord_data_len
