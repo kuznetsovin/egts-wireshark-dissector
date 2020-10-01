@@ -22,6 +22,7 @@ local egts_subrecord_type = {
     [1]  = "EGTS_SR_TERM_IDENTITY",
     [16] = "EGTS_SR_POS_DATA",
     [17] = "EGTS_SR_EXT_POS_DATA",
+    [18] = "EGTS_SR_AD_SENSORS_DATA",
     [19] = "EGTS_SR_COUNTERS_DATA",
     [20] = "EGTS_SR_STATE_DATA",
     [22] = "EGTS_SR_LOOPIN_DATA",
@@ -29,7 +30,6 @@ local egts_subrecord_type = {
     [24] = "EGTS_SR_ABS_AN_SENS_DATA",
     [25] = "EGTS_SR_ABS_CNTR_DATA",
     [26] = "EGTS_SR_ABS_LOOPIN_DATA",
-    [18] = "EGTS_SR_AD_SENSORS_DATA",
     [27] = "EGTS_SR_LIQUID_LEVEL_SENSOR",
     [28] = "EGTS_SR_PASSENGERS_COUNTERS",
 }
