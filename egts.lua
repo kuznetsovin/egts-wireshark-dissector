@@ -153,6 +153,61 @@ local function parse_sr_response(buf, tree)
     return buf:len()
 end
 
+local function parse_sr_term_identity(buf, tree)
+    local cur_offset = 0
+
+    tree:add(header.tid, buf:range(cur_offset, 4):le_uint())
+    cur_offset = cur_offset + 4
+
+    local flags = buf:range(cur_offset, 1):le_uint()
+    tree:add(header.mne, flags)
+    tree:add(header.bse, flags)
+    tree:add(header.nide, flags)
+    tree:add(header.ssra, flags)
+    tree:add(header.lngce, flags)
+    tree:add(header.imsie, flags)
+    tree:add(header.imeie, flags)
+    tree:add(header.hdide, flags)
+    cur_offset = cur_offset + 1
+
+    if bit.band(flags, 0x1) ~= 0 then
+        tree:add(header.hdid, buf:range(cur_offset, 2):uint())
+        cur_offset = cur_offset + 2
+    end
+
+    if bit.band(flags, 0x2) ~= 0 then
+        tree:add(header.imei, buf:range(cur_offset, 15):string())
+        cur_offset = cur_offset + 15
+    end
+
+    if bit.band(flags, 0x4) ~= 0 then
+        tree:add(header.imsi, buf:range(cur_offset, 16):string())
+        cur_offset = cur_offset + 16
+    end
+
+    if bit.band(flags, 0x8) ~= 0 then
+        tree:add(header.lngc, buf:range(cur_offset, 3):string())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(flags, 0x20) ~= 0 then
+        tree:add(header.nid, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(flags, 0x40) ~= 0 then
+        tree:add(header.bs, buf:range(cur_offset, 2):le_uint())
+        cur_offset = cur_offset + 2
+    end
+
+    if bit.band(flags, 0x80) ~= 0 then
+        tree:add(header.msisdn, buf:range(cur_offset, 15):le_uint())
+        cur_offset = cur_offset + 15
+    end
+
+    return cur_offset
+end
+
 local function parse_sr_pos_data(buf, tree)
     local cur_offset = 0
     
@@ -267,6 +322,8 @@ local function parse_subrecord(buf, tree)
         
         if subrecord_type == 0 then
             parse_sr_response(sr_data, srd)
+        elseif subrecord_type == 1 then
+            parse_sr_term_identity(sr_data, srd)
         elseif subrecord_type == 16 then
             parse_sr_pos_data(sr_data, srd)
         elseif subrecord_type == 17 then
