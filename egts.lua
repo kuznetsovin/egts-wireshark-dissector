@@ -73,9 +73,9 @@ local header =
     srt      = ProtoField.new("Subrecord type", "egts.srt", ftypes.UINT8, egts_subrecord_type, base.DEC),
     srl      = ProtoField.new("Subrecord length", "egts.srl", ftypes.UINT16, nil, base.DEC),
     srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.BYTES),
-    ntm      = ProtoField.new("Navigation time", "egts.ntm", ftypes.UINT32, nil, base.DEC),
-    lat      = ProtoField.new("Latitude", "egts.lat", ftypes.UINT32, nil, base.DEC),
-    long     = ProtoField.new("Longitude", "egts.long", ftypes.UINT32, nil, base.DEC),
+    ntm      = ProtoField.new("Navigation time", "egts.ntm", ftypes.ABSOLUTE_TIME),
+    lat      = ProtoField.new("Latitude", "egts.lat", ftypes.DOUBLE),
+    long     = ProtoField.new("Longitude", "egts.long", ftypes.DOUBLE),
     alte     = ProtoField.new("ALTE", "egts.alte", ftypes.UINT8, nil, base.DEC, 0x80), 
     lohs     = ProtoField.new("LONS", "egts.lohs", ftypes.UINT8, nil, base.DEC, 0x40), 
     lahs     = ProtoField.new("LAHS", "egts.lahs", ftypes.UINT8, nil, base.DEC, 0x20), 
@@ -112,21 +112,82 @@ local function get_egts_length(tvbuf, pktinfo, offset)
     return header_len + data_len + 2
 end
 
+local function parse_sr_pos_data(buf, tree)
+    local cur_offset = 0
+    
+    local ntm = buf:range(cur_offset, 4):le_uint()
+    local offset_time = os.time{year=2010, month=1, day=1, hour=0}
+    ntm = ntm + offset_time
+
+    tree:add(header.ntm, NSTime.new(ntm))
+    cur_offset = cur_offset + 4
+
+    tree:add(header.lat, buf:range(cur_offset, 4):le_uint() * 90 / 0xFFFFFFFF)
+    cur_offset = cur_offset + 4
+
+    tree:add(header.long, buf:range(cur_offset, 4):le_uint() * 180 / 0xFFFFFFFF)
+    cur_offset = cur_offset + 4
+
+    local flg = buf:range(cur_offset, 1):uint()
+    tree:add(header.alte, flg)
+    tree:add(header.lohs, flg)
+    tree:add(header.lahs, flg)
+    tree:add(header.mv, flg)
+    tree:add(header.bb, flg)
+    tree:add(header.cs, flg)
+    tree:add(header.fix, flg)
+    tree:add(header.vld, flg)
+    cur_offset = cur_offset + 1
+
+    local spd = buf:range(cur_offset, 2):le_uint()
+    tree:add(header.dirh, spd)
+    tree:add(header.alts, spd)
+    tree:add(header.vld, spd)
+    cur_offset = cur_offset + 2
+
+    tree:add(header.dir, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    tree:add(header.odm, buf:range(cur_offset, 3):le_uint())
+    cur_offset = cur_offset + 3
+
+    tree:add(header.din, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    tree:add(header.src, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    if bit.band(flg, 0x80) ~= 0 then
+        tree:add(header.alt, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    -- TODO: разобраться с разбором SourceData
+    return buf:len()
+end
+
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
     while current_offset < buf:len() do
         local subrecord = subrecords:add(egts_proto, buf, "Subrecord") 
-
-        subrecord:add(header.srt, buf:range(current_offset, 1):uint())
+        
+        local subrecord_type = buf:range(current_offset, 1):uint()
+        subrecord:add(header.srt, subrecord_type)
         current_offset = current_offset + 1
 
         local subrecord_data_len = buf:range(current_offset, 2):le_uint()
         subrecord:add(header.srl, subrecord_data_len)
-        current_offset = current_offset + 2
-        
+        current_offset = current_offset + 2  
 
-        subrecord:add(header.srd, buf:range(current_offset, subrecord_data_len):raw())
+        local sr_data = buf:range(current_offset, subrecord_data_len)
+        local srd = subrecord:add(egts_proto, sr_data, "Subrecord data")
+        if subrecord_type == 16 then
+            parse_sr_pos_data(sr_data, srd)
+        else
+            subrecord:add(header.srd, sr_data:raw())
+        end
+      
         current_offset = current_offset + subrecord_data_len
     end
 
