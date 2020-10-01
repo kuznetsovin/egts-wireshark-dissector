@@ -122,6 +122,13 @@ local header =
     pdop     = ProtoField.new("Position dilution of precision", "egts.pdop", ftypes.UINT16, nil, base.DEC),
     sat      = ProtoField.new("Satellites", "egts.sat", ftypes.UINT8, nil, base.DEC),
     ns       = ProtoField.new("Navigation system", "egts.ns", ftypes.UINT16, nil, base.DEC),
+    st = ProtoField.new("State", "egts.ns", ftypes.UINT8, nil, base.DEC),
+    mpsv = ProtoField.new("Main power source voltage", "egts.mpsv", ftypes.UINT8, nil, base.DEC),
+    bbv = ProtoField.new("Back up battery voltage", "egts.bbv", ftypes.UINT8, nil, base.DEC),
+    ibv = ProtoField.new("Internal battery voltage", "egts.ibv", ftypes.UINT8, nil, base.DEC),
+    nms = ProtoField.new("NMS", "egts.nms", ftypes.UINT8, nil, base.DEC),
+    ibu = ProtoField.new("IBU", "egts.ibu", ftypes.UINT8, nil, base.DEC),
+    bbu = ProtoField.new("BBU", "egts.bbu", ftypes.UINT8, nil, base.DEC),
     sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
