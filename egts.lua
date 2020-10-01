@@ -95,6 +95,16 @@ local header =
     src      = ProtoField.new("Source", "egts.src", ftypes.UINT8, nil, base.DEC),
     alt      = ProtoField.new("Altitude", "egts.alt", ftypes.UINT32, nil, base.DEC),
     srcd     = ProtoField.new("Source data", "egts.srcd", ftypes.UINT16, nil, base.DEC),
+    nsfe     = ProtoField.new("NSFE", "egts.nsfe", ftypes.UINT8, nil, base.DEC, 0x10),
+    sfe      = ProtoField.new("SFE", "egts.sfe", ftypes.UINT8, nil, base.DEC, 0x8),
+    pfe      = ProtoField.new("PFE", "egts.pfe", ftypes.UINT8, nil, base.DEC, 0x4),
+    hfe      = ProtoField.new("HFE", "egts.hfe", ftypes.UINT8, nil, base.DEC, 0x2),
+    vfe      = ProtoField.new("VFE", "egts.vfe", ftypes.UINT8, nil, base.DEC, 0x1),
+    vdop     = ProtoField.new("Vertical dilution of precision", "egts.vdop", ftypes.UINT16, nil, base.DEC),
+    hdop     = ProtoField.new("Horizontal dilution of precision", "egts.hdop", ftypes.UINT16, nil, base.DEC),
+    pdop     = ProtoField.new("Position dilution of precision", "egts.pdop", ftypes.UINT16, nil, base.DEC),
+    sat      = ProtoField.new("Satellites", "egts.sat", ftypes.UINT8, nil, base.DEC),
+    ns       = ProtoField.new("Navigation system", "egts.ns", ftypes.UINT16, nil, base.DEC),
     sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
@@ -180,6 +190,47 @@ local function parse_sr_pos_data(buf, tree)
     return buf:len()
 end
 
+local function parse_sr_ext_pos_data(buf, tree)
+    local cur_offset = 0
+    local flags = buf:range(cur_offset, 1):uint()
+    tree:add(header.nsfe, flags)
+    tree:add(header.sfe, flags)
+    tree:add(header.pfe, flags)
+    tree:add(header.hfe, flags)
+    tree:add(header.vfe, flags)
+    cur_offset = cur_offset + 1
+
+    if bit.band(flags, 0x1) ~= 0 then
+        -- если флаг VFE установлен, то есть поле снижение точности в вертикальной плоскости
+        tree:add(header.vdop, buf:range(cur_offset, 2):le_uint())
+        cur_offset = cur_offset + 2
+    end
+
+    if bit.band(flags, 0x2) ~= 0 then
+        -- если флаг HFE установлен, то есть поле снижение точности в горизонтальной плоскости
+        tree:add(header.hdop, buf:range(cur_offset, 2):le_uint())
+        cur_offset = cur_offset + 2
+    end
+
+    if bit.band(flags, 0x4) ~= 0 then
+        -- если флаг HFE установлен, то есть поле снижение точности по местоположению
+        tree:add(header.pdop, buf:range(cur_offset, 2):le_uint())
+        cur_offset = cur_offset + 2
+    end
+
+    if bit.band(flags, 0x8) ~= 0 then
+        -- если флаг SFE установлен, то есть поле c данными о текущем количестве видимых спутников и типе используемой навигационной спутниковой системы
+        tree:add(header.sat, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+
+        tree:add(header.ns, buf:range(cur_offset, 2):le_uint())
+        cur_offset = cur_offset + 2
+    end
+
+    return buf:len()
+end
+
+
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
@@ -201,6 +252,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_response(sr_data, srd)
         elseif subrecord_type == 16 then
             parse_sr_pos_data(sr_data, srd)
+        elseif subrecord_type == 17 then
+            parse_sr_ext_pos_data(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
         end
