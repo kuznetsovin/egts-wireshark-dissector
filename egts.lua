@@ -122,13 +122,13 @@ local header =
     pdop     = ProtoField.new("Position dilution of precision", "egts.pdop", ftypes.UINT16, nil, base.DEC),
     sat      = ProtoField.new("Satellites", "egts.sat", ftypes.UINT8, nil, base.DEC),
     ns       = ProtoField.new("Navigation system", "egts.ns", ftypes.UINT16, nil, base.DEC),
-    st = ProtoField.new("State", "egts.ns", ftypes.UINT8, nil, base.DEC),
-    mpsv = ProtoField.new("Main power source voltage", "egts.mpsv", ftypes.UINT8, nil, base.DEC),
-    bbv = ProtoField.new("Back up battery voltage", "egts.bbv", ftypes.UINT8, nil, base.DEC),
-    ibv = ProtoField.new("Internal battery voltage", "egts.ibv", ftypes.UINT8, nil, base.DEC),
-    nms = ProtoField.new("NMS", "egts.nms", ftypes.UINT8, nil, base.DEC),
-    ibu = ProtoField.new("IBU", "egts.ibu", ftypes.UINT8, nil, base.DEC),
-    bbu = ProtoField.new("BBU", "egts.bbu", ftypes.UINT8, nil, base.DEC),
+    st       = ProtoField.new("State", "egts.ns", ftypes.UINT8, nil, base.DEC),
+    mpsv     = ProtoField.new("Main power source voltage", "egts.mpsv", ftypes.UINT8, nil, base.DEC),
+    bbv      = ProtoField.new("Back up battery voltage", "egts.bbv", ftypes.UINT8, nil, base.DEC),
+    ibv      = ProtoField.new("Internal battery voltage", "egts.ibv", ftypes.UINT8, nil, base.DEC),
+    nms      = ProtoField.new("NMS", "egts.nms", ftypes.UINT8, nil, base.DEC, 0x4),
+    ibu      = ProtoField.new("IBU", "egts.ibu", ftypes.UINT8, nil, base.DEC, 0x2),
+    bbu      = ProtoField.new("BBU", "egts.bbu", ftypes.UINT8, nil, base.DEC, 0x1),
     sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
 }
 
@@ -309,6 +309,29 @@ local function parse_sr_ext_pos_data(buf, tree)
     return buf:len()
 end
 
+local function parse_sr_state_data(buf, tree)
+    local cur_offset = 0
+
+    tree:add(header.st, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+    
+    tree:add(header.mpsv, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    tree:add(header.bbv, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    tree:add(header.ibv, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    local flags = buf:range(cur_offset, 1):uint()
+    tree:add(header.nms, flags)
+    tree:add(header.ibu, flags)
+    tree:add(header.bbu, flags)
+    cur_offset = cur_offset + 1
+
+    return cur_offset
+end
 
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
@@ -335,6 +358,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_pos_data(sr_data, srd)
         elseif subrecord_type == 17 then
             parse_sr_ext_pos_data(sr_data, srd)
+        elseif subrecord_type == 20 then
+            parse_sr_state_data(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
         end
