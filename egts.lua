@@ -73,17 +73,19 @@ local header =
     srt      = ProtoField.new("Subrecord type", "egts.srt", ftypes.UINT8, egts_subrecord_type, base.DEC),
     srl      = ProtoField.new("Subrecord length", "egts.srl", ftypes.UINT16, nil, base.DEC),
     srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.BYTES),
+    crn      = ProtoField.new("Confirmed record number", "egts.crn", ftypes.UINT16, nil, base.DEC),
+    rs       = ProtoField.new("Record status", "egts.rs", ftypes.UINT8, nil, base.DEC),
     ntm      = ProtoField.new("Navigation time", "egts.ntm", ftypes.ABSOLUTE_TIME),
     lat      = ProtoField.new("Latitude", "egts.lat", ftypes.DOUBLE),
     long     = ProtoField.new("Longitude", "egts.long", ftypes.DOUBLE),
-    alte     = ProtoField.new("ALTE", "egts.alte", ftypes.UINT8, nil, base.DEC, 0x80), 
-    lohs     = ProtoField.new("LONS", "egts.lohs", ftypes.UINT8, nil, base.DEC, 0x40), 
-    lahs     = ProtoField.new("LAHS", "egts.lahs", ftypes.UINT8, nil, base.DEC, 0x20), 
-    mv       = ProtoField.new("MV", "egts.mv", ftypes.UINT8, nil, base.DEC, 0x10), 
-    bb       = ProtoField.new("BB", "egts.bb", ftypes.UINT8, nil, base.DEC, 0x8), 
-    cs       = ProtoField.new("CS", "egts.cs", ftypes.UINT8, nil, base.DEC, 0x4), 
-    fix      = ProtoField.new("FIX", "egts.fix", ftypes.UINT8, nil, base.DEC, 0x2),  
-    vld      = ProtoField.new("VLD", "egts.vld", ftypes.UINT8, nil, base.DEC, 0x1), 
+    alte     = ProtoField.new("ALTE", "egts.alte", ftypes.UINT8, nil, base.DEC, 0x80),
+    lohs     = ProtoField.new("LONS", "egts.lohs", ftypes.UINT8, nil, base.DEC, 0x40),
+    lahs     = ProtoField.new("LAHS", "egts.lahs", ftypes.UINT8, nil, base.DEC, 0x20),
+    mv       = ProtoField.new("MV", "egts.mv", ftypes.UINT8, nil, base.DEC, 0x10),
+    bb       = ProtoField.new("BB", "egts.bb", ftypes.UINT8, nil, base.DEC, 0x8),
+    cs       = ProtoField.new("CS", "egts.cs", ftypes.UINT8, nil, base.DEC, 0x4),
+    fix      = ProtoField.new("FIX", "egts.fix", ftypes.UINT8, nil, base.DEC, 0x2),
+    vld      = ProtoField.new("VLD", "egts.vld", ftypes.UINT8, nil, base.DEC, 0x1),
     dirh     = ProtoField.new("Direction the Highest bit", "egts.dirh", ftypes.UINT16, nil, base.DEC, 0x8000),
     alts     = ProtoField.new("Altitude sign", "egts.alts", ftypes.UINT16, nil, base.DEC, 0x4000),
     spd      = ProtoField.new("Speed", "egts.spd", ftypes.UINT16, nil, base.DEC, 0x3fff),
@@ -110,6 +112,18 @@ local function get_egts_length(tvbuf, pktinfo, offset)
     local data_len = tvbuf:range(offset + 5, 2):le_uint()
 
     return header_len + data_len + 2
+end
+
+local function parse_sr_response(buf, tree)
+    local cur_offset = 0
+
+    tree:add(header.crn, buf:range(cur_offset, 2):le_uint())
+    cur_offset = cur_offset + 2
+
+    tree:add(header.rs, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+  
+    return buf:len()
 end
 
 local function parse_sr_pos_data(buf, tree)
@@ -170,8 +184,8 @@ local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
     while current_offset < buf:len() do
-        local subrecord = subrecords:add(egts_proto, buf, "Subrecord") 
-        
+        local subrecord = subrecords:add(egts_proto, buf, "Subrecord")
+              
         local subrecord_type = buf:range(current_offset, 1):uint()
         subrecord:add(header.srt, subrecord_type)
         current_offset = current_offset + 1
@@ -182,7 +196,10 @@ local function parse_subrecord(buf, tree)
 
         local sr_data = buf:range(current_offset, subrecord_data_len)
         local srd = subrecord:add(egts_proto, sr_data, "Subrecord data")
-        if subrecord_type == 16 then
+        
+        if subrecord_type == 0 then
+            parse_sr_response(sr_data, srd)
+        elseif subrecord_type == 16 then
             parse_sr_pos_data(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
