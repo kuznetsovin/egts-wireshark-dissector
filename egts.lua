@@ -20,6 +20,7 @@ local egts_packet_type = {
 local egts_subrecord_type = {
     [0]  = "EGTS_SR_RECORD_RESPONSE",
     [1]  = "EGTS_SR_TERM_IDENTITY",
+    [15] = "EGTS_SR_EGTSPLUS_DATA",
     [16] = "EGTS_SR_POS_DATA",
     [17] = "EGTS_SR_EXT_POS_DATA",
     [18] = "EGTS_SR_AD_SENSORS_DATA",
@@ -169,9 +170,9 @@ local header =
     ans5     = ProtoField.new("Analog Sensor 5", "egts.ans5", ftypes.UINT16, nil, base.DEC),
     ans6     = ProtoField.new("Analog Sensor 6", "egts.ans6", ftypes.UINT16, nil, base.DEC),
     ans7     = ProtoField.new("Analog Sensor 7", "egts.ans7", ftypes.UINT16, nil, base.DEC),
-    ans8     = ProtoField.new("Analog Sensor 8", "egts.ans8", ftypes.UINT16, nil, base.DEC)
-
-
+    ans8     = ProtoField.new("Analog Sensor 8", "egts.ans8", ftypes.UINT16, nil, base.DEC),
+    cn       = ProtoField.new("Counter Number", "egts.cn", ftypes.UINT8, nil, base.DEC),
+    cnv      = ProtoField.new("Counter Value", "egts.cnv", ftypes.UINT16, nil, base.DEC),
 }
 
 -- регистрация полей протокола
@@ -514,6 +515,18 @@ local function parse_sr_ad_sensors_data(buf, tree)
     return sectionLen
 end
 
+local function parse_sr_abs_cntr_data(buf, tree)
+    local cur_offset = 0
+
+    tree:add(header.cnv, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    tree:add(header.cnv, buf:range(cur_offset, 3):le_uint())
+    cur_offset = cur_offset + 3
+
+    return offset
+end
+
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
@@ -545,6 +558,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_liquid_level_sensor(sr_data, srd)
         elseif subrecord_type == 18 then
             parse_sr_ad_sensors_data(sr_data, srd)
+        elseif subrecord_type == 25 then
+            parse_sr_abs_cntr_data(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
         end
