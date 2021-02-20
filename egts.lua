@@ -116,7 +116,7 @@ local header =
     rd       = ProtoField.new("Record data", "egts.rd", ftypes.BYTES),
     srt      = ProtoField.new("Subrecord type", "egts.srt", ftypes.UINT8, egts_subrecord_type, base.DEC),
     srl      = ProtoField.new("Subrecord length", "egts.srl", ftypes.UINT16, nil, base.DEC),
-    srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.BYTES),
+    srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.STRING),
     crn      = ProtoField.new("Confirmed record number", "egts.crn", ftypes.UINT16, nil, base.DEC),
     rs       = ProtoField.new("Record status", "egts.rs", ftypes.UINT8, result_code, base.DEC),
     tid      = ProtoField.new("Terminal identifier", "egts.tid", ftypes.UINT32, nil, base.DEC),
@@ -179,7 +179,7 @@ local header =
     llsn     = ProtoField.new("Liquid Level Sensor Number", "egts.llsn", ftypes.UINT8, nil, base.DEC, 0x7),
     maddr    = ProtoField.new("Module address", "egts.maddr", ftypes.UINT16, nil, base.DEC),
     llsd     = ProtoField.new("Liquid Level Sensor Data", "egts.llsd", ftypes.UINT32, nil, base.DEC),
-    llsdraw  = ProtoField.new("Liquid Level Sensor Data bytes", "egts.llsdraw", ftypes.BYTES),
+    llsdraw  = ProtoField.new("Liquid Level Sensor Data bytes", "egts.llsdraw", ftypes.STRING),
     dioe1    = ProtoField.new("Digital Inputs Octet Exists 1", "egts.dioe1", ftypes.UINT8, nil, base.DEC, 0x1),
     dioe2    = ProtoField.new("Digital Inputs Octet Exists 2", "egts.dioe2", ftypes.UINT8, nil, base.DEC, 0x2),
     dioe3    = ProtoField.new("Digital Inputs Octet Exists 3", "egts.dioe3", ftypes.UINT8, nil, base.DEC, 0x4),
@@ -439,7 +439,7 @@ local function parse_sr_liquid_level_sensor(buf, tree)
         tree:add(header.llsd, buf:range(cur_offset, 4):le_uint())
         cur_offset = cur_offset + 4
     else
-        tree:add(header.llsdraw, buf:raw())
+        tree:add(header.llsdraw, buf:bytes():tohex())
     end
 
     return cur_offset
@@ -603,7 +603,7 @@ local function parse_subrecord(buf, tree)
         elseif subrecord_type == 25 then
             parse_sr_abs_cntr_data(sr_data, srd)
         else
-            subrecord:add(header.srd, sr_data:raw())
+            subrecord:add(header.srd, sr_data:bytes():tohex())
         end
       
         current_offset = current_offset + subrecord_data_len
