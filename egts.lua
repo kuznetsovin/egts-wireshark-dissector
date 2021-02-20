@@ -137,6 +137,41 @@ local header =
     maddr    = ProtoField.new("Module address", "egts.maddr", ftypes.UINT16, nil, base.DEC),
     llsd     = ProtoField.new("Liquid Level Sensor Data", "egts.llsd", ftypes.UINT32, nil, base.DEC),
     llsdraw  = ProtoField.new("Liquid Level Sensor Data bytes", "egts.llsdraw", ftypes.BYTES),
+    dioe1    = ProtoField.new("Digital Inputs Octet Exists 1", "egts.dioe1", ftypes.UINT8, nil, base.DEC, 0x1),
+    dioe2    = ProtoField.new("Digital Inputs Octet Exists 2", "egts.dioe2", ftypes.UINT8, nil, base.DEC, 0x2),
+    dioe3    = ProtoField.new("Digital Inputs Octet Exists 3", "egts.dioe3", ftypes.UINT8, nil, base.DEC, 0x4),
+    dioe4    = ProtoField.new("Digital Inputs Octet Exists 4", "egts.dioe4", ftypes.UINT8, nil, base.DEC, 0x8),
+    dioe5    = ProtoField.new("Digital Inputs Octet Exists 5", "egts.dioe5", ftypes.UINT8, nil, base.DEC, 0x10),
+    dioe6    = ProtoField.new("Digital Inputs Octet Exists 6", "egts.dioe6", ftypes.UINT8, nil, base.DEC, 0x20),
+    dioe7    = ProtoField.new("Digital Inputs Octet Exists 7", "egts.dioe7", ftypes.UINT8, nil, base.DEC, 0x40),
+    dioe8    = ProtoField.new("Digital Inputs Octet Exists 8", "egts.dioe8", ftypes.UINT8, nil, base.DEC, 0x80),
+    dout     = ProtoField.new("Digital Outputs", "egts.dout", ftypes.UINT8, nil, base.DEC),
+    asfe1    = ProtoField.new("Analog Sensor Fields Exist 1", "egts.asfe1", ftypes.UINT8, nil, base.DEC, 0x1),
+    asfe2    = ProtoField.new("Analog Sensor Fields Exist 2", "egts.asfe2", ftypes.UINT8, nil, base.DEC, 0x2),
+    asfe3    = ProtoField.new("Analog Sensor Fields Exist 3", "egts.asfe3", ftypes.UINT8, nil, base.DEC, 0x4),
+    asfe4    = ProtoField.new("Analog Sensor Fields Exist 4", "egts.asfe4", ftypes.UINT8, nil, base.DEC, 0x8),
+    asfe5    = ProtoField.new("Analog Sensor Fields Exist 5", "egts.asfe5", ftypes.UINT8, nil, base.DEC, 0x10),
+    asfe6    = ProtoField.new("Analog Sensor Fields Exist 6", "egts.asfe6", ftypes.UINT8, nil, base.DEC, 0x20),
+    asfe7    = ProtoField.new("Analog Sensor Fields Exist 7", "egts.asfe7", ftypes.UINT8, nil, base.DEC, 0x40),
+    asfe8    = ProtoField.new("Analog Sensor Fields Exist 8", "egts.asfe8", ftypes.UINT8, nil, base.DEC, 0x80),
+    adio1    = ProtoField.new("Additional Digital Inputs Octet 1", "egts.adio1", ftypes.UINT8, nil, base.DEC),
+    adio2    = ProtoField.new("Additional Digital Inputs Octet 2", "egts.adio2", ftypes.UINT8, nil, base.DEC),
+    adio3    = ProtoField.new("Additional Digital Inputs Octet 3", "egts.adio3", ftypes.UINT8, nil, base.DEC),
+    adio4    = ProtoField.new("Additional Digital Inputs Octet 4", "egts.adio4", ftypes.UINT8, nil, base.DEC),
+    adio5    = ProtoField.new("Additional Digital Inputs Octet 5", "egts.adio5", ftypes.UINT8, nil, base.DEC),
+    adio6    = ProtoField.new("Additional Digital Inputs Octet 6", "egts.adio6", ftypes.UINT8, nil, base.DEC),
+    adio7    = ProtoField.new("Additional Digital Inputs Octet 7", "egts.adio7", ftypes.UINT8, nil, base.DEC),
+    adio8    = ProtoField.new("Additional Digital Inputs Octet 8", "egts.adio8", ftypes.UINT8, nil, base.DEC),
+    ans1     = ProtoField.new("Analog Sensor 1", "egts.ans1", ftypes.UINT16, nil, base.DEC),
+    ans2     = ProtoField.new("Analog Sensor 2", "egts.ans2", ftypes.UINT16, nil, base.DEC),
+    ans3     = ProtoField.new("Analog Sensor 3", "egts.ans3", ftypes.UINT16, nil, base.DEC),
+    ans4     = ProtoField.new("Analog Sensor 4", "egts.ans4", ftypes.UINT16, nil, base.DEC),
+    ans5     = ProtoField.new("Analog Sensor 5", "egts.ans5", ftypes.UINT16, nil, base.DEC),
+    ans6     = ProtoField.new("Analog Sensor 6", "egts.ans6", ftypes.UINT16, nil, base.DEC),
+    ans7     = ProtoField.new("Analog Sensor 7", "egts.ans7", ftypes.UINT16, nil, base.DEC),
+    ans8     = ProtoField.new("Analog Sensor 8", "egts.ans8", ftypes.UINT16, nil, base.DEC)
+
+
 }
 
 -- регистрация полей протокола
@@ -367,6 +402,118 @@ local function parse_sr_liquid_level_sensor(buf, tree)
     return cur_offset
 end
 
+local function parse_sr_ad_sensors_data(buf, tree)
+    local cur_offset = 0
+    local sectionLen = buf:len()
+
+    local diflg = buf:range(cur_offset, 1):uint()
+    tree:add(header.dioe1, diflg)
+    tree:add(header.dioe2, diflg)
+    tree:add(header.dioe3, diflg)
+    tree:add(header.dioe4, diflg)
+    tree:add(header.dioe5, diflg)
+    tree:add(header.dioe6, diflg)
+    tree:add(header.dioe7, diflg)
+    tree:add(header.dioe8, diflg)
+    cur_offset = cur_offset + 1
+
+    tree:add(header.dout, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+
+    local ansflg = buf:range(cur_offset, 1):uint()
+    tree:add(header.asfe1, ansflg)
+    tree:add(header.asfe2, ansflg)
+    tree:add(header.asfe3, ansflg)
+    tree:add(header.asfe4, ansflg)
+    tree:add(header.asfe5, ansflg)
+    tree:add(header.asfe6, ansflg)
+    tree:add(header.asfe7, ansflg)
+    tree:add(header.asfe8, ansflg)
+    cur_offset = cur_offset + 1
+
+    if bit.band(diflg, 0x1) ~= 0 then
+        tree:add(header.adio1, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x2) ~= 0 then
+        tree:add(header.adio2, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x4) ~= 0 then
+        tree:add(header.adio3, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x8) ~= 0 then
+        tree:add(header.adio4, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x10) ~= 0 then
+        tree:add(header.adio5, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x20) ~= 0 then
+        tree:add(header.adio6, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x40) ~= 0 then
+        tree:add(header.adio7, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(diflg, 0x80) ~= 0 then
+        tree:add(header.adio8, buf:range(cur_offset, 1):uint())
+        cur_offset = cur_offset + 1
+    end
+
+    if bit.band(ansflg, 0x1) ~= 0 then
+        tree:add(header.ans1, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x2) ~= 0 then
+        tree:add(header.ans2, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x4) ~= 0 then
+        tree:add(header.ans3, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x8) ~= 0 then
+        tree:add(header.ans4, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x10) ~= 0 then
+        tree:add(header.ans5, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x20) ~= 0 then
+        tree:add(header.ans6, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x40) ~= 0 then
+        tree:add(header.ans7, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    if bit.band(ansflg, 0x80) ~= 0 then
+        tree:add(header.ans8, buf:range(cur_offset, 3):le_uint())
+        cur_offset = cur_offset + 3
+    end
+
+    return sectionLen
+end
+
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
@@ -396,6 +543,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_state_data(sr_data, srd)
         elseif subrecord_type == 27 then
             parse_sr_liquid_level_sensor(sr_data, srd)
+        elseif subrecord_type == 18 then
+            parse_sr_ad_sensors_data(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
         end
