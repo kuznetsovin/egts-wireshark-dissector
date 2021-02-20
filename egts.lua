@@ -4,7 +4,7 @@ local egts_proto = Proto("egts", "EGTS")
 -- настройки плагина
 local default_settings =
 {
-    port = 20629
+    port = 5020
 }
 
 local EGTS_PT_RESPONSE = "EGTS_PT_RESPONSE"
@@ -76,7 +76,7 @@ local header =
     srd      = ProtoField.new("Subrecord data", "egts.srd", ftypes.BYTES),
     crn      = ProtoField.new("Confirmed record number", "egts.crn", ftypes.UINT16, nil, base.DEC),
     rs       = ProtoField.new("Record status", "egts.rs", ftypes.UINT8, nil, base.DEC),
-    tid      = ProtoField.new("Terminal identifier)", "egts.tid", ftypes.UINT32, nil, base.DEC),
+    tid      = ProtoField.new("Terminal identifier", "egts.tid", ftypes.UINT32, nil, base.DEC),
     mne      = ProtoField.new("MNE", "egts.mne", ftypes.UINT8, nil, base.DEC, 0x80),
     bse      = ProtoField.new("BSE", "egts.bse", ftypes.UINT8, nil, base.DEC, 0x40),
     nide     = ProtoField.new("NIDE", "egts.nide", ftypes.UINT8, nil, base.DEC, 0x20),
@@ -129,7 +129,14 @@ local header =
     nms      = ProtoField.new("NMS", "egts.nms", ftypes.UINT8, nil, base.DEC, 0x4),
     ibu      = ProtoField.new("IBU", "egts.ibu", ftypes.UINT8, nil, base.DEC, 0x2),
     bbu      = ProtoField.new("BBU", "egts.bbu", ftypes.UINT8, nil, base.DEC, 0x1),
-    sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX)
+    sfrcs    = ProtoField.new("Services frame data checksum", "egts.sfrcs", ftypes.UINT16, nil, base.HEX),
+    llsef    = ProtoField.new("Liquid Level Sensor Error Flag", "egts.llsef", ftypes.UINT8, nil, base.DEC, 0x40),
+    llsvu    = ProtoField.new("Liquid Level Sensor Value Unit", "egts.llsvu", ftypes.UINT8, nil, base.DEC, 0x30),
+    rdf      = ProtoField.new("Raw Data Flag", "egts.rdf", ftypes.UINT8, nil, base.DEC, 0x8),
+    llsn     = ProtoField.new("Liquid Level Sensor Number", "egts.llsn", ftypes.UINT8, nil, base.DEC, 0x7),
+    maddr    = ProtoField.new("Module address", "egts.maddr", ftypes.UINT16, nil, base.DEC),
+    llsd     = ProtoField.new("Liquid Level Sensor Data", "egts.llsd", ftypes.UINT32, nil, base.DEC),
+    llsdraw  = ProtoField.new("Liquid Level Sensor Data bytes", "egts.llsdraw", ftypes.BYTES),
 }
 
 -- регистрация полей протокола
@@ -245,7 +252,7 @@ local function parse_sr_pos_data(buf, tree)
     local spd = buf:range(cur_offset, 2):le_uint()
     tree:add(header.dirh, spd)
     tree:add(header.alts, spd)
-    tree:add(header.vld, spd)
+    tree:add(header.spd, spd)
     cur_offset = cur_offset + 2
 
     tree:add(header.dir, buf:range(cur_offset, 1):uint())
@@ -297,16 +304,19 @@ local function parse_sr_ext_pos_data(buf, tree)
         cur_offset = cur_offset + 2
     end
 
+    local sectionLen = buf:len()
     if bit.band(flags, 0x8) ~= 0 then
         -- если флаг SFE установлен, то есть поле c данными о текущем количестве видимых спутников и типе используемой навигационной спутниковой системы
         tree:add(header.sat, buf:range(cur_offset, 1):uint())
         cur_offset = cur_offset + 1
 
-        tree:add(header.ns, buf:range(cur_offset, 2):le_uint())
-        cur_offset = cur_offset + 2
+        if cur_offset < sectionLen then
+            tree:add(header.ns, buf:range(cur_offset, 2):le_uint())
+            cur_offset = cur_offset + 2
+        end
     end
 
-    return buf:len()
+    return sectionLen
 end
 
 local function parse_sr_state_data(buf, tree)
@@ -329,6 +339,30 @@ local function parse_sr_state_data(buf, tree)
     tree:add(header.ibu, flags)
     tree:add(header.bbu, flags)
     cur_offset = cur_offset + 1
+
+    return cur_offset
+end
+
+local function parse_sr_liquid_level_sensor(buf, tree)
+    local cur_offset = 0
+
+    local flags = buf:range(cur_offset, 1):uint()
+    tree:add(header.llsef, flags)
+    tree:add(header.llsvu, flags)
+    tree:add(header.rdf, flags)
+    tree:add(header.llsn, flags)
+    cur_offset = cur_offset + 1
+
+    tree:add(header.maddr, buf:range(cur_offset, 2):le_uint())
+    cur_offset = cur_offset + 2
+
+    if bit.band(flags, 0x8) == 0 then
+        -- если флаг RDF флаг установлен, то значение имеет длину 4 байта
+        tree:add(header.llsd, buf:range(cur_offset, 4):le_uint())
+        cur_offset = cur_offset + 4
+    else
+        tree:add(header.llsdraw, buf:raw())
+    end
 
     return cur_offset
 end
@@ -360,6 +394,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_ext_pos_data(sr_data, srd)
         elseif subrecord_type == 20 then
             parse_sr_state_data(sr_data, srd)
+        elseif subrecord_type == 27 then
+            parse_sr_liquid_level_sensor(sr_data, srd)
         else
             subrecord:add(header.srd, sr_data:raw())
         end
