@@ -20,6 +20,7 @@ local egts_packet_type = {
 local egts_subrecord_type = {
     [0]  = "EGTS_SR_RECORD_RESPONSE",
     [1]  = "EGTS_SR_TERM_IDENTITY",
+    [9]  = "EGTS_SR_RESULT_CODE",
     [15] = "EGTS_SR_EGTSPLUS_DATA",
     [16] = "EGTS_SR_POS_DATA",
     [17] = "EGTS_SR_EXT_POS_DATA",
@@ -569,6 +570,15 @@ local function parse_sr_abs_cntr_data(buf, tree)
     return offset
 end
 
+local function parse_sr_result_code(buf, tree)
+    local cur_offset = 0
+
+    tree:add(header.rs, buf:range(cur_offset, 1):uint())
+    cur_offset = cur_offset + 1
+  
+    return buf:len()
+end
+
 local function parse_subrecord(buf, tree)
     local subrecords = tree:add(egts_proto, buf, "Record data")
     local current_offset = 0
@@ -590,6 +600,8 @@ local function parse_subrecord(buf, tree)
             parse_sr_response(sr_data, srd)
         elseif subrecord_type == 1 then
             parse_sr_term_identity(sr_data, srd)
+        elseif subrecord_type == 9 then
+            parse_sr_result_code(sr_data, srd)
         elseif subrecord_type == 16 then
             parse_sr_pos_data(sr_data, srd)
         elseif subrecord_type == 17 then
