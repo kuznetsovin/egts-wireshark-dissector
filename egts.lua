@@ -685,8 +685,10 @@ local function parse_pt_response (buf, tree)
     tree:add(header.pr, buf:range(current_offset, 1):uint())
     current_offset = current_offset + 1
 
-    local computed_bytes = parse_sdr(buf:range(current_offset), tree)
-    current_offset = current_offset + computed_bytes
+    if buf:len() - current_offset > 0 then
+        local computed_bytes = parse_sdr(buf:range(current_offset), tree)
+        current_offset = current_offset + computed_bytes        
+    end
 
     return buf:len()
 end
